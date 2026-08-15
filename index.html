@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tic-Tac-Toe (C++ clone)</title>
+    <style>
+      :root{
+        --bg:#0f1724;
+        --panel:#0b1220;
+        --cell:#e6eef8;
+        --accent:#2563eb;
+        --muted:#94a3b8;
+        --win:#10b981;
+      }
+      html,body{height:100%;}
+      body{
+        margin:0;
+        min-height:100%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-family:Inter,Segoe UI,Roboto,Arial,system-ui;
+        background:linear-gradient(180deg,var(--bg),#071024 120%);
+        color:var(--cell);
+      }
+      .app{
+        width:min(560px,94vw);
+        padding:24px;
+        background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));
+        border-radius:12px;
+        box-shadow:0 6px 30px rgba(2,6,23,0.6);
+      }
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+      h1{font-size:18px;margin:0;color:#e6eef8}
+      .controls{display:flex;gap:8px;align-items:center}
+      button{
+        background:var(--accent);
+        color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600
+      }
+      button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--cell);font-weight:500}
+      #turn{color:var(--muted);font-size:14px}
+
+      #board{
+        display:grid;
+        grid-template-columns:repeat(3,1fr);
+        gap:12px;
+        width:100%;
+        max-width:420px;
+        margin:8px auto 0;
+      }
+      .cell{
+        aspect-ratio:1/1;
+        display:flex;align-items:center;justify-content:center;
+        font-size:48px;font-weight:700;color:rgba(2,6,23,0.96);
+        background:linear-gradient(180deg,#ffffff 0%,#f3f7ff 100%);
+        border-radius:10px;cursor:pointer;user-select:none;transition:transform .12s ease,box-shadow .12s ease;
+        box-shadow:0 6px 18px rgba(16,24,40,0.08), inset 0 -2px 0 rgba(0,0,0,0.02);
+      }
+      .cell:hover{transform:translateY(-4px)}
+      .cell.disabled{cursor:default;opacity:0.9;transform:none}
+      .cell.X{color:#05205e}
+      .cell.O{color:#2b6cb0}
+      .cell.win{box-shadow:0 10px 30px rgba(16,185,129,0.18),0 0 0 4px rgba(16,185,129,0.06)}
+
+      /* end-game animations */
+      @keyframes winPulse {
+        0%{transform:scale(1);}
+        50%{transform:scale(1.08);}
+        100%{transform:scale(1);}
+      }
+      .cell.win{animation:winPulse .9s ease-in-out 2}
+
+      @keyframes shake {
+        0%{transform:translateX(0)}
+        25%{transform:translateX(-6px)}
+        50%{transform:translateX(6px)}
+        75%{transform:translateX(-4px)}
+        100%{transform:translateX(0)}
+      }
+      #board.draw{animation:shake .6s ease-in-out}
+
+      .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+      .confetti span{
+        position:absolute;top:-10px;width:10px;height:14px;opacity:0.95;border-radius:2px;transform:rotate(15deg);
+        animation:fall 900ms linear forwards;
+      }
+      @keyframes fall{to{transform:translateY(120vh) rotate(360deg);opacity:1}}
+
+      footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+      #msg{color:var(--muted);font-size:14px}
+
+      @media (max-width:420px){
+        .cell{font-size:36px;border-radius:8px}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Tic‑Tac‑Toe — <em>The Unbeatable Bot</em></h1>
+        <div class="controls">
+          <div id="turn">Computer: X • You: O</div>
+          <button id="reset">Reset</button>
+        </div>
+      </header>
+
+      <main>
+        <div id="board" role="grid" aria-label="Tic tac toe board"></div>
+      </main>
+
+      <footer>
+        <div id="msg"></div>
+        <button id="newGame" class="secondary">New Game (computer starts)</button>
+      </footer>
+    </div>
+
+    <script>
+      const n = 3;
+      let grid = Array.from({ length: n }, () => Array(n).fill(0)); // 0 empty, 1 computer (X), 2 human (O)
+
+      function check() {
+        for (let i = 0; i < n; i++) {
+          if (grid[i][0] === grid[i][1] && grid[i][1] === grid[i][2] && grid[i][0] !== 0) return grid[i][0];
+          if (grid[0][i] === grid[1][i] && grid[1][i] === grid[2][i] && grid[0][i] !== 0) return grid[0][i];
+        }
+        if (grid[0][0] === grid[1][1] && grid[1][1] === grid[2][2] && grid[0][0] !== 0) return grid[0][0];
+        if (grid[0][2] === grid[1][1] && grid[1][1] === grid[2][0] && grid[2][0] !== 0) return grid[2][0];
+        return 0;
+      }
+
+      function findWinningCells() {
+        for (let i = 0; i < n; i++) {
+          if (grid[i][0] === grid[i][1] && grid[i][1] === grid[i][2] && grid[i][0] !== 0) return [[i, 0], [i, 1], [i, 2]];
+          if (grid[0][i] === grid[1][i] && grid[1][i] === grid[2][i] && grid[0][i] !== 0) return [[0, i], [1, i], [2, i]];
+        }
+        if (grid[0][0] === grid[1][1] && grid[1][1] === grid[2][2] && grid[0][0] !== 0) return [[0, 0], [1, 1], [2, 2]];
+        if (grid[0][2] === grid[1][1] && grid[1][1] === grid[2][0] && grid[2][0] !== 0) return [[0, 2], [1, 1], [2, 0]];
+        return null;
+      }
+
+      function endBoard() {
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (grid[i][j] === 0) return false;
+        return true;
+      }
+
+      function game(turn, x, y) {
+        grid[x][y] = (turn % 2) + 1;
+        if (check()) {
+          grid[x][y] = 0;
+          return 1;
+        }
+        if (endBoard()) {
+          grid[x][y] = 0;
+          return 0;
+        }
+        let worst = 1;
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            if (grid[i][j]) continue;
+            worst = Math.min(worst, -game(turn + 1, i, j));
+          }
+        }
+        grid[x][y] = 0;
+        return worst;
+      }
+
+      function computerMove() {
+        const candidates = [];
+        let best = -Infinity;
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            if (grid[i][j]) continue;
+            const score = game(0, i, j);
+            if (score > best) {
+              best = score;
+              candidates.length = 0;
+              candidates.push([i, j]);
+            } else if (score === best) {
+              candidates.push([i, j]);
+            }
+          }
+        }
+        if (candidates.length === 0) return;
+        const choice = candidates[Math.floor(Math.random() * candidates.length)];
+        grid[choice[0]][choice[1]] = 1;
+      }
+
+      function render() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            const div = document.createElement('div');
+            div.className = 'cell' + (grid[i][j] ? ' disabled' : '');
+            div.dataset.i = i;
+            div.dataset.j = j;
+            if (grid[i][j] === 1) { div.classList.add('X'); div.textContent = 'X'; }
+            else if (grid[i][j] === 2) { div.classList.add('O'); div.textContent = 'O'; }
+            div.addEventListener('click', onHumanClick);
+            board.appendChild(div);
+          }
+        }
+
+        const winner = check();
+        const msg = document.getElementById('msg');
+        const winCells = findWinningCells();
+        // clear previous win styles
+        document.querySelectorAll('.cell.win').forEach(el => el.classList.remove('win'));
+        if (winCells) {
+          for (const [x, y] of winCells) {
+            const idx = x * n + y;
+            const cell = board.children[idx];
+            if (cell) cell.classList.add('win');
+          }
+        }
+
+        if (winner === 1) msg.textContent = 'Computer (X) wins';
+        else if (winner === 2) msg.textContent = 'You (O) win';
+        else if (endBoard()) msg.textContent = 'Draw';
+        else msg.textContent = '';
+
+        if (winner || endBoard()) triggerEndAnimations(winner);
+        else clearAnimations();
+      }
+
+      function onHumanClick(e) {
+        const i = +e.currentTarget.dataset.i;
+        const j = +e.currentTarget.dataset.j;
+        if (grid[i][j] || check() || endBoard()) return;
+        grid[i][j] = 2;
+        render();
+        if (check() || endBoard()) return;
+        setTimeout(() => { computerMove(); render(); }, 180);
+      }
+
+      document.getElementById('reset').addEventListener('click', () => {
+        grid = Array.from({ length: n }, () => Array(n).fill(0));
+        clearAnimations();
+        render();
+      });
+
+      document.getElementById('newGame').addEventListener('click', () => {
+        grid = Array.from({ length: n }, () => Array(n).fill(0));
+        computerMove();
+        clearAnimations();
+        render();
+      });
+
+      computerMove();
+      render();
+
+      // --- End-game animation helpers ---
+      function triggerEndAnimations(winner) {
+        const board = document.getElementById('board');
+        if (!winner && endBoard()) board.classList.add('draw');
+        if (winner === 1 || !winner) createConfetti();
+      }
+
+      function clearAnimations() {
+        const board = document.getElementById('board');
+        board.classList.remove('draw');
+        const conf = document.querySelector('.confetti');
+        if (conf) conf.remove();
+      }
+
+      function createConfetti() {
+        const existing = document.querySelector('.confetti');
+        if (existing) existing.remove();
+        const container = document.createElement('div');
+        container.className = 'confetti';
+        const colors = ['#F87171','#FBBF24','#34D399','#60A5FA','#C084FC','#FB7185'];
+        const app = document.querySelector('.app');
+        app.appendChild(container);
+        const count = 28;
+        for (let i = 0; i < count; i++) {
+          const el = document.createElement('span');
+          el.style.left = Math.random() * 100 + '%';
+          el.style.background = colors[Math.floor(Math.random() * colors.length)];
+          el.style.animationDelay = (Math.random() * 300) + 'ms';
+          el.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+          container.appendChild(el);
+        }
+        setTimeout(() => container.remove(), 1500);
+      }
+    </script>
+  </body>
+</html>
